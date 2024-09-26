@@ -94,3 +94,6 @@ runs:
         branch: ${{ inputs.branch }}
         github_token: ${{ inputs.token }}
         directory: ../${{ inputs.repository-path }}
+
+    - shell: bash
+      run: rm -rf ../${{ inputs.repository-path }}
