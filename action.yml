@@ -1,0 +1,95 @@
+name: Host NuGet on GitHub
+author: moomiji
+description: 'Run the sleet, and push the static nuget feed to github.'
+
+inputs:
+  paths:
+    description: ''
+    required: true
+  options:
+    description: ''
+    default: ''
+  config:
+    description: ''
+    default: 'None'
+  commit-message:
+    description: ''
+    default: '${{ github.repository }}(${{ github.ref_name }}): ${{ github.sha }}'
+  repository-path:
+    description: 'Relative path under $GITHUB_WORKSPACE to place the repository'
+    default: 'GitHub-Hosted'
+  repository:
+    description: 'Repository name with owner. For example, actions/checkout'
+  branch:
+    description: 'The branch. Otherwise, uses the default branch.'
+  token:
+    description: >
+      Personal access token (PAT) used to fetch the repository. The PAT is configured
+      with the local git config, which enables your scripts to run authenticated git
+      commands. The post-job step removes the PAT.
+
+
+      We recommend using a service account with the least permissions necessary.
+      Also when generating a new PAT, select the least scopes necessary.
+
+
+      [Learn more about creating and using encrypted secrets](https://help.github.com/en/actions/automating-your-workflow-with-github-actions/creating-and-using-encrypted-secrets)
+    default: ${{ github.token }}
+  lfs:
+    description: 'Whether to download Git-LFS files'
+    default: false
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-dotnet@v4
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        repository: ${{ inputs.repository }}
+        token: ${{ inputs.token }}
+        path: ${{ inputs.repository-path }}
+        lfs: ${{ inputs.lfs }}
+
+    - name: Verify
+      id: verify
+      working-directory: ${{ inputs.repository-path }}
+      shell: bash
+      run: |
+        if git rev-parse --verify origin/${{ inputs.branch }}; then
+          echo "exist-branch=true" | tee -a $GITHUB_OUTPUT
+          git checkout ${{ inputs.branch }}
+        else
+          echo "exist-branch=false" | tee -a $GITHUB_OUTPUT
+          git checkout --orphan ${{ inputs.branch }}
+          git rm -rf .
+        fi
+
+    - name: Run the sleet
+      shell: bash
+      run: |
+        dotnet tool install -g sleet
+        sleet push ${{ inputs.paths }} \
+          -p SLEET_FEED_PATH=${GITHUB_WORKSPACE}/${{ inputs.repository-path }}/${SLEET_FEED_PATH} \
+          --config ${{ inputs.config }} \
+          ${{ inputs.options }}
+
+    - name: Commit files
+      working-directory: ${{ inputs.repository-path }}
+      shell: bash
+      run: |
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add .
+        git commit -m "${{ inputs.commit-message }}" -m "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        if ${{ steps.verify.outputs.exist-branch }}; then
+          git pull origin ${{ inputs.branch }} --rebase
+        fi
+
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        repository: ${{ inputs.repository }}
+        branch: ${{ inputs.branch }}
+        github_token: ${{ inputs.token }}
+        directory: ${{ inputs.repository-path }}
