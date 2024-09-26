@@ -1,0 +1,24 @@
+name: test
+
+on: [push, workflow_dispatch]
+
+jobs:
+  test-1:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - run: |
+          PackageBaseAddress=$(curl -fS https://pkgs.dev.azure.com/dnceng/public/_packaging/test-tools/nuget/v3/index.json | jq -r 'first(.resources[] | select(.["@type"] | startswith("PackageBaseAddress"))) | .["@id"]')
+          Version=$(curl -fS $PackageBaseAddress/mstest/index.json | jq -r 'first(.versions[] | select(startswith("3")))')
+          curl -fSLO "$PackageBaseAddress/mstest/$Version/mstest.$Version.nupkg"
+
+      - uses: moomiji/host-nuget-on-github@main
+        with:
+          paths: ./
+          branch: test-1
+          options: --force
+        env:
+          SLEET_FEED_TYPE: local
+          SLEET_FEED_PATH: feed
+          SLEET_FEED_BASEURI: https://github.com/moomiji/host-nuget-on-github/raw/test-1/
