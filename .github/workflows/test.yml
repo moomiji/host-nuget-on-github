@@ -3,7 +3,7 @@ name: test
 on: [push, workflow_dispatch]
 
 jobs:
-  test-1:
+  test:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -21,4 +21,13 @@ jobs:
         env:
           SLEET_FEED_TYPE: local
           SLEET_FEED_PATH: feed
-          SLEET_FEED_BASEURI: https://github.com/moomiji/host-nuget-on-github/raw/test-1/
+          SLEET_FEED_BASEURI: https://github.com/moomiji/host-nuget-on-github/raw/test-1/feed/
+
+      - uses: moomiji/host-nuget-on-github@main
+        with:
+          paths: ./
+          branch: test-2
+          options: --force
+        env:
+          SLEET_FEED_TYPE: local
+          SLEET_FEED_BASEURI: https://github.com/moomiji/host-nuget-on-github/raw/test-2/
