@@ -51,8 +51,7 @@ runs:
         path: ${{ inputs.repository-path }}
         lfs: ${{ inputs.lfs }}
 
-    - name: Verify
-      id: verify
+    - id: verify
       shell: bash
       run: |
         mv ${{ inputs.repository-path }} ../
@@ -66,8 +65,7 @@ runs:
           git rm -rf .
         fi
 
-    - name: Run the sleet
-      shell: bash
+    - shell: bash
       run: |
         dotnet tool install -g sleet
         sleet push ${{ inputs.paths }} \
@@ -75,8 +73,7 @@ runs:
           --config ${{ inputs.config }} \
           ${{ inputs.options }}
 
-    - name: Commit files
-      working-directory: ../${{ inputs.repository-path }}
+    - working-directory: ../${{ inputs.repository-path }}
       shell: bash
       run: |
         git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -87,8 +84,7 @@ runs:
           git pull origin ${{ inputs.branch }} --rebase
         fi
 
-    - name: Push changes
-      uses: ad-m/github-push-action@master
+    - uses: ad-m/github-push-action@master
       with:
         repository: ${{ inputs.repository }}
         branch: ${{ inputs.branch }}
