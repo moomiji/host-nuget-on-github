@@ -21,7 +21,9 @@ inputs:
   repository:
     description: 'Repository name with owner. For example, actions/checkout'
   branch:
-    description: 'The branch. Otherwise, uses the default branch.'
+    description: 'The branch name. Otherwise, uses the default branch.'
+  squash:
+    description: 'A boolean value indicating whether to squash all commits of the branch.'
   token:
     description: >
       Personal access token (PAT) used to fetch the repository. The PAT is configured
@@ -57,8 +59,16 @@ runs:
         mv ${{ inputs.repository-path }} ../
         cd ../${{ inputs.repository-path }}
         if git rev-parse --verify origin/${{ inputs.branch }}; then
-          echo "exist-branch=true" | tee -a $GITHUB_OUTPUT
-          git checkout ${{ inputs.branch }}
+          if ${{ inputs.squash }}; then
+            echo "exist-branch=false" | tee -a $GITHUB_OUTPUT
+            git checkout ${{ inputs.branch }}
+            git checkout --orphan temp-${{ inputs.branch }}
+            git branch -d ${{ inputs.branch }}
+            git branch -m ${{ inputs.branch }}
+          else
+            echo "exist-branch=true" | tee -a $GITHUB_OUTPUT
+            git checkout ${{ inputs.branch }}
+          fi
         else
           echo "exist-branch=false" | tee -a $GITHUB_OUTPUT
           git checkout --orphan ${{ inputs.branch }}
@@ -90,6 +100,7 @@ runs:
         branch: ${{ inputs.branch }}
         github_token: ${{ inputs.token }}
         directory: ../${{ inputs.repository-path }}
+        force_with_lease: ${{ inputs.squash }}
 
     - shell: bash
       run: rm -rf ../${{ inputs.repository-path }}
