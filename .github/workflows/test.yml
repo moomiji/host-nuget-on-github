@@ -16,18 +16,24 @@ jobs:
       - uses: moomiji/host-nuget-on-github@main
         with:
           paths: ./
-          branch: test-1
+          branch: test-simplest
           options: --force
         env:
-          SLEET_FEED_TYPE: local
-          SLEET_FEED_PATH: feed
-          SLEET_FEED_BASEURI: https://github.com/moomiji/host-nuget-on-github/raw/test-1/feed/
+          SLEET_FEED_BASEURI: https://github.com/moomiji/host-nuget-on-github/raw/test-simplest/
 
       - uses: moomiji/host-nuget-on-github@main
         with:
           paths: ./
-          branch: test-2
+          branch: test-path
           options: --force
         env:
-          SLEET_FEED_TYPE: local
-          SLEET_FEED_BASEURI: https://github.com/moomiji/host-nuget-on-github/raw/test-2/
+          SLEET_FEED_PATH: feed
+          SLEET_FEED_BASEURI: https://github.com/moomiji/host-nuget-on-github/raw/test-path/feed/
+
+      - uses: moomiji/host-nuget-on-github@main
+        with:
+          paths: ./
+          branch: test-squash
+          options: --force
+        env:
+          SLEET_FEED_BASEURI: https://github.com/moomiji/host-nuget-on-github/raw/test-squash/

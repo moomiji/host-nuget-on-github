@@ -79,6 +79,7 @@ runs:
       run: |
         dotnet tool install -g sleet
         sleet push ${{ inputs.paths }} \
+          -p SLEET_FEED_TYPE=local \
           -p SLEET_FEED_PATH=${GITHUB_WORKSPACE}/../${{ inputs.repository-path }}/${SLEET_FEED_PATH} \
           --config ${{ inputs.config }} \
           ${{ inputs.options }}
