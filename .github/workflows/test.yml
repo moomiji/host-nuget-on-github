@@ -8,32 +8,34 @@ jobs:
     permissions:
       contents: write
     steps:
-      - run: |
+      - env:
+          MSTEST_VERSION: 3
+        run: |
+          echo ${MSTEST_VERSION}
           PackageBaseAddress=$(curl -fS https://pkgs.dev.azure.com/dnceng/public/_packaging/test-tools/nuget/v3/index.json | jq -r 'first(.resources[] | select(.["@type"] | startswith("PackageBaseAddress"))) | .["@id"]')
-          Version=$(curl -fS $PackageBaseAddress/mstest/index.json | jq -r 'first(.versions[] | select(startswith("3")))')
-          curl -fSLO "$PackageBaseAddress/mstest/$Version/mstest.$Version.nupkg"
+          Version=$(curl -fS ${PackageBaseAddress}/mstest/index.json | jq -r "first(.versions[] | select(startswith(\"${MSTEST_VERSION}\")))")
+          curl -fSLO "${PackageBaseAddress}/mstest/${Version}/mstest.${Version}.nupkg"
+          curl -fSLO "${PackageBaseAddress}/mstest/3.6.0/mstest.3.6.0.nupkg"
 
       - uses: moomiji/host-nuget-on-github@main
         with:
-          paths: ./
+          force: true
+          package-paths: ./
           branch: test-simplest
-          options: --force
-        env:
-          SLEET_FEED_BASEURI: https://github.com/moomiji/host-nuget-on-github/raw/test-simplest/
+          base-uri: https://github.com/moomiji/host-nuget-on-github/raw/test-simplest/
 
       - uses: moomiji/host-nuget-on-github@main
         with:
-          paths: ./
+          force: true
+          package-paths: ./
           branch: test-path
-          options: --force
-        env:
-          SLEET_FEED_PATH: feed
-          SLEET_FEED_BASEURI: https://github.com/moomiji/host-nuget-on-github/raw/test-path/feed/
+          base-uri: https://github.com/moomiji/host-nuget-on-github/raw/test-path/feed/
+          feed-path: feed
 
       - uses: moomiji/host-nuget-on-github@main
         with:
-          paths: ./
+          package-paths: ./
           branch: test-squash
-          options: --force
-        env:
-          SLEET_FEED_BASEURI: https://github.com/moomiji/host-nuget-on-github/raw/test-squash/
+          base-uri: https://github.com/moomiji/host-nuget-on-github/raw/test-squash/
+          skip-existing: true
+          squash: true

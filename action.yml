@@ -3,27 +3,41 @@ author: moomiji
 description: 'Run the sleet, and push the static nuget feed to github.'
 
 inputs:
-  paths:
-    description: ''
+  base-uri:
+    description: >
+      Specify a URI to write to the feed json files instead of the container's URI.
+      Useful if serving up the content from a different endpoint.
     required: true
-  options:
-    description: ''
+  package-paths:
+    description: 'Relative path to individual packages or directories containing packages.'
+    required: true
+  repository-path:
+    description: >
+      Relative path under $GITHUB_WORKSPACE/.. to place the repository
+      Useful if specifying a config.
+    default: 'GitHub-Hosted'
+  feed-path:
+    description: '[Path is the output directory of the feed.](https://github.com/emgarten/Sleet/blob/main/doc/client-settings.md#folder-feed-specific-properties)'
     default: ''
   config:
-    description: ''
+    description: '[Optional path to sleet.json where the source information is contained.](https://github.com/emgarten/Sleet/blob/main/doc/commands.md#push)'
     default: 'None'
+  force:
+    description: '[Overwrite existing packages.](https://github.com/emgarten/Sleet/blob/main/doc/commands.md#push)'
+    default: false
+  skip-existing:
+    description: '[Skip packages that already exist on the feed.](https://github.com/emgarten/Sleet/blob/main/doc/commands.md#push)'
+    default: false
   commit-message:
-    description: ''
-    default: '${{ github.repository }}(${{ github.ref_name }}): ${{ github.sha }}'
-  repository-path:
-    description: 'Relative path under $GITHUB_WORKSPACE/.. to place the repository'
-    default: 'GitHub-Hosted'
+    description: 'Commit message'
+    default: '${{ github.repository }}(${{ github.ref_name }})'
+  squash:
+    description: 'Indicate whether to squash all commits of the branch.'
+    default: false
   repository:
     description: 'Repository name with owner. For example, actions/checkout'
   branch:
     description: 'The branch name. Otherwise, uses the default branch.'
-  squash:
-    description: 'A boolean value indicating whether to squash all commits of the branch.'
   token:
     description: >
       Personal access token (PAT) used to fetch the repository. The PAT is configured
@@ -78,11 +92,13 @@ runs:
     - shell: bash
       run: |
         dotnet tool install -g sleet
-        sleet push ${{ inputs.paths }} \
+        sleet push ${{ inputs.package-paths }} \
           -p SLEET_FEED_TYPE=local \
-          -p SLEET_FEED_PATH=${GITHUB_WORKSPACE}/../${{ inputs.repository-path }}/${SLEET_FEED_PATH} \
-          --config ${{ inputs.config }} \
-          ${{ inputs.options }}
+          -p SLEET_FEED_BASEURI=${{ inputs.base-uri }} \
+          -p SLEET_FEED_PATH=${GITHUB_WORKSPACE}/../${{ inputs.repository-path }}/${{ inputs.feed-path }}/ \
+          ${{ inputs.force && '--force' || '' }} \
+          ${{ inputs.skip-existing && '--skip-existing' || '' }} \
+          --config ${{ inputs.config }}
 
     - working-directory: ../${{ inputs.repository-path }}
       shell: bash
@@ -90,7 +106,7 @@ runs:
         git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
         git add .
-        git commit -m "${{ inputs.commit-message }}" -m "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        git commit -m "${{ inputs.commit-message }}" -m "- sha: ${{ github.sha }}" -m "- run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         if ${{ steps.verify.outputs.exist-branch }}; then
           git pull origin ${{ inputs.branch }} --rebase
         fi
