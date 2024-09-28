@@ -74,7 +74,7 @@ runs:
         cd ../${{ inputs.repository-path }}
         if git rev-parse --verify origin/${{ inputs.branch }}; then
           if ${{ inputs.squash }}; then
-            echo "exist-branch=false" | tee -a $GITHUB_OUTPUT
+            echo "exist-branch=squash" | tee -a $GITHUB_OUTPUT
             git checkout ${{ inputs.branch }}
             git checkout --orphan temp-${{ inputs.branch }}
             git branch -d ${{ inputs.branch }}
@@ -107,7 +107,10 @@ runs:
         git config --local user.name "github-actions[bot]"
         git add .
         git commit -m "${{ inputs.commit-message }}" -m "- sha: ${{ github.sha }}" -m "- run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-        if ${{ steps.verify.outputs.exist-branch }}; then
+        if ${{ steps.verify.outputs.exist-branch == 'squash' }}; then
+          git branch --set-upstream-to=origin/${{ inputs.branch }}
+        fi
+        if ${{ steps.verify.outputs.exist-branch == 'true' }}; then
           git pull origin ${{ inputs.branch }} --rebase
         fi
 
@@ -117,7 +120,7 @@ runs:
         branch: ${{ inputs.branch }}
         github_token: ${{ inputs.token }}
         directory: ../${{ inputs.repository-path }}
-        force_with_lease: ${{ inputs.squash }}
+        force_with_lease: ${{ steps.verify.outputs.exist-branch == 'squash' }}
 
     - shell: bash
       run: rm -rf ../${{ inputs.repository-path }}
