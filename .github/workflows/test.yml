@@ -26,7 +26,16 @@ jobs:
 
       - uses: moomiji/host-nuget-on-github@main
         with:
-          force: true
+          skip-existing: true
+          package-paths: ./
+          branch: test-squash
+          base-uri: https://github.com/moomiji/host-nuget-on-github/raw/test-squash/
+          squash: true
+
+      - uses: moomiji/host-nuget-on-github@main
+        with:
+          skip-existing: true
+          squash: true
           package-paths: ./
           branch: test-path
           base-uri: https://github.com/moomiji/host-nuget-on-github/raw/test-path/feed/
@@ -34,8 +43,9 @@ jobs:
 
       - uses: moomiji/host-nuget-on-github@main
         with:
-          package-paths: ./
-          branch: test-squash
-          base-uri: https://github.com/moomiji/host-nuget-on-github/raw/test-squash/
           skip-existing: true
+          package-paths: ./
+          branch: test-commit-no-sign
+          base-uri: https://github.com/moomiji/host-nuget-on-github/raw/test-commit-no-sign/
           squash: true
+          commit-sign: true

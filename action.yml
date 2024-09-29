@@ -29,8 +29,28 @@ inputs:
     description: '[Skip packages that already exist on the feed.](https://github.com/emgarten/Sleet/blob/main/doc/commands.md#push)'
     default: false
   commit-message:
-    description: 'Commit message'
+    description: 'Message to use when committing changes.'
     default: '${{ github.repository }}(${{ github.ref_name }})'
+  commit-author:
+    description: 'Author name and email address in the format `Display Name <email@address.com>`.'
+    default: '${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>'
+  commit-user-name:
+    description: 'User name of the commiter.'
+    default: 'github-actions[bot]'
+  commit-user-email:
+    description: >
+      User email address of the commiter ( {user.id}+{user.login}@users.noreply.github.com ).
+      See [users API](https://api.github.com/users/github-actions%5Bbot%5D).
+    default: '41898282+github-actions[bot]@users.noreply.github.com'
+  commit-sign:
+    description: 'Sign commits use `web-flow.gpg` or `commit-user-gpg-key` of your own bot.'
+    default: false
+  commit-user-gpg-key:
+    description: 'GPG private key of your own bot. Defaults to `web-flow.gpg`.'
+    default: ''
+  commit-user-gpg-passphrase:
+    description: 'Passphrase of the GPG key.'
+    default: ''
   squash:
     description: 'Indicate whether to squash all commits of the branch.'
     default: false
@@ -100,13 +120,28 @@ runs:
           ${{ inputs.skip-existing && '--skip-existing' || '' }} \
           --config ${{ inputs.config }}
 
+    - if: inputs.commit-sign == 'true' && inputs.commit-user-gpg-key != ''
+      id: gpg
+      uses: crazy-max/ghaction-import-gpg@v6
+      with:
+        workdir: ../${{ inputs.repository-path }}
+        gpg_private_key: ${{ inputs.commit-user-gpg-key }}
+        passphrase: ${{ inputs.commit-user-gpg-passphrase }}
+        git_user_signingkey: true
+        git_commit_gpgsign: true
+
     - working-directory: ../${{ inputs.repository-path }}
       shell: bash
       run: |
-        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git config --local user.name "github-actions[bot]"
+        git config --local user.name "${{ inputs.commit-user-name }}"
+        git config --local user.email "${{ inputs.commit-user-email }}"
         git add .
-        git commit -m "${{ inputs.commit-message }}" -m "- sha: ${{ github.sha }}" -m "- run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        git commit \
+          -m "${{ inputs.commit-message }}" \
+          -m "- sha: ${{ github.sha }}" \
+          -m "- run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+          --author="${{ inputs.commit-author }}" \
+          ${{ steps.gpg.outputs.keyid != '' && '-S' || '' }}
         if ${{ steps.verify.outputs.exist-branch == 'squash' }}; then
           git branch --set-upstream-to=origin/${{ inputs.branch }}
         fi
@@ -122,5 +157,6 @@ runs:
         directory: ../${{ inputs.repository-path }}
         force_with_lease: ${{ steps.verify.outputs.exist-branch == 'squash' }}
 
-    - shell: bash
+    - if: always()
+      shell: bash
       run: rm -rf ../${{ inputs.repository-path }}
