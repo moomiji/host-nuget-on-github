@@ -11,6 +11,9 @@ inputs:
   package-paths:
     description: 'Relative path to individual packages or directories containing packages.'
     required: true
+  on-sleet-pushed:
+    description: 'Bash commands executed under feed path, after sleet pushed.'
+    default: ''
   repository-path:
     description: >
       Relative path under $GITHUB_WORKSPACE/.. to place the repository
@@ -119,6 +122,10 @@ runs:
           ${{ inputs.force && '--force' || '' }} \
           ${{ inputs.skip-existing && '--skip-existing' || '' }} \
           --config ${{ inputs.config }}
+
+    - working-directory: ../${{ inputs.repository-path }}
+      shell: bash
+      run: ${{ inputs.on-sleet-pushed }}
 
     - if: inputs.commit-sign == 'true' && inputs.commit-user-gpg-key != ''
       id: gpg

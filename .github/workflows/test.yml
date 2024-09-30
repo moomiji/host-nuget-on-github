@@ -49,3 +49,14 @@ jobs:
           base-uri: https://github.com/moomiji/host-nuget-on-github/raw/test-commit-no-sign/
           squash: true
           commit-sign: true
+
+      - uses: moomiji/host-nuget-on-github@main
+        with:
+          skip-existing: true
+          squash: true
+          package-paths: ./
+          branch: test-on-sleet-pushed
+          base-uri: https://github.com/moomiji/host-nuget-on-github/raw/test-on-sleet-pushed/
+          on-sleet-pushed: |
+            sleet retention settings --stable 1 --prerelease 1
+            sleet retention prune
