@@ -12,7 +12,7 @@ inputs:
     description: 'Relative path to individual packages or directories containing packages.'
     required: true
   on-sleet-pushed:
-    description: 'Bash commands executed under feed path, after sleet pushed.'
+    description: 'One-line bash command executed on sleet pushed.'
     default: ''
   repository-path:
     description: >
@@ -113,18 +113,22 @@ runs:
         fi
 
     - shell: bash
+      env:
+        SLEET_FEED_TYPE: local
+        SLEET_FEED_BASEURI: ${{ inputs.base-uri }}
+        SLEET_FEED_PATH: ${{ github.workspace }}/../${{ inputs.repository-path }}/${{ inputs.feed-path }}/
       run: |
         dotnet tool install -g sleet
         sleet push ${{ inputs.package-paths }} \
-          -p SLEET_FEED_TYPE=local \
-          -p SLEET_FEED_BASEURI=${{ inputs.base-uri }} \
-          -p SLEET_FEED_PATH=${GITHUB_WORKSPACE}/../${{ inputs.repository-path }}/${{ inputs.feed-path }}/ \
           ${{ inputs.force && '--force' || '' }} \
           ${{ inputs.skip-existing && '--skip-existing' || '' }} \
           --config ${{ inputs.config }}
 
-    - working-directory: ../${{ inputs.repository-path }}
-      shell: bash
+    - shell: bash
+      env:
+        SLEET_FEED_TYPE: local
+        SLEET_FEED_BASEURI: ${{ inputs.base-uri }}
+        SLEET_FEED_PATH: ${{ github.workspace }}/../${{ inputs.repository-path }}/${{ inputs.feed-path }}/
       run: ${{ inputs.on-sleet-pushed }}
 
     - if: inputs.commit-sign == 'true' && inputs.commit-user-gpg-key != ''
