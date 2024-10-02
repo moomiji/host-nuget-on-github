@@ -12,7 +12,7 @@ inputs:
     description: 'Relative path to individual packages or directories containing packages.'
     required: true
   on-sleet-pushed:
-    description: 'One-line bash command executed on sleet pushed.'
+    description: 'Bash commands executed on sleet pushed.'
     default: ''
   repository-path:
     description: >
@@ -24,7 +24,7 @@ inputs:
     description: '[Relative path under $FEED_WORKSPACE/ to the output directory of the feed.](https://github.com/emgarten/Sleet/blob/main/doc/client-settings.md#folder-feed-specific-properties)'
     default: ''
   config:
-    description: '[Optional path to sleet.json where the source information is contained.](https://github.com/emgarten/Sleet/blob/main/doc/commands.md#push)'
+    description: '[Relative path to sleet.json where the source information is contained.](https://github.com/emgarten/Sleet/blob/main/doc/commands.md#push)'
     default: 'None'
   force:
     description: '[Overwrite existing packages.](https://github.com/emgarten/Sleet/blob/main/doc/commands.md#push)'
@@ -63,20 +63,10 @@ inputs:
   branch:
     description: 'The branch name. Otherwise, uses the default branch.'
   token:
-    description: >
-      Personal access token (PAT) used to fetch the repository. The PAT is configured
-      with the local git config, which enables your scripts to run authenticated git
-      commands. The post-job step removes the PAT.
-
-
-      We recommend using a service account with the least permissions necessary.
-      Also when generating a new PAT, select the least scopes necessary.
-
-
-      [Learn more about creating and using encrypted secrets](https://help.github.com/en/actions/automating-your-workflow-with-github-actions/creating-and-using-encrypted-secrets)
+    description: 'Personal access token (PAT) used to fetch and push the repository.'
     default: ${{ github.token }}
   lfs:
-    description: 'Whether to download Git-LFS files'
+    description: 'Whether to download Git-LFS files.'
     default: false
 
 outputs:
