@@ -4,13 +4,18 @@ on: [push, workflow_dispatch]
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: write
     steps:
       -
         env:
           MSTEST_VERSION: 3
+        shell: bash
         run: |
           echo ${MSTEST_VERSION}
           PackageBaseAddress=$(curl -fS https://pkgs.dev.azure.com/dnceng/public/_packaging/test-tools/nuget/v3/index.json | jq -r 'first(.resources[] | select(.["@type"] | startswith("PackageBaseAddress"))) | .["@id"]')
@@ -30,6 +35,7 @@ jobs:
         id: nuget
       -
         if: ${{ steps.nuget.outputs.feed-uri }}
+        shell: bash
         run: |
           echo "feed-uri - ${{ steps.nuget.outputs.feed-uri }}"
           curl -fSL "${{ steps.nuget.outputs.feed-uri }}"
