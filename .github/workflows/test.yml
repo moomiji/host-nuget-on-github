@@ -8,7 +8,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - env:
+      -
+        env:
           MSTEST_VERSION: 3
         run: |
           echo ${MSTEST_VERSION}
@@ -16,29 +17,29 @@ jobs:
           Version=$(curl -fS ${PackageBaseAddress}/mstest/index.json | jq -r "first(.versions[] | select(startswith(\"${MSTEST_VERSION}\")))")
           curl -fSLO "${PackageBaseAddress}/mstest/${Version}/mstest.${Version}.nupkg"
           curl -fSLO "${PackageBaseAddress}/mstest/3.6.0/mstest.3.6.0.nupkg"
-
-      - uses: moomiji/host-nuget-on-github@main
+      -
+        uses: moomiji/host-nuget-on-github@main
         with:
           force: true
           package-paths: ./
           branch: test-simplest
           base-uri: https://github.com/moomiji/host-nuget-on-github/raw/test-simplest/
         id: nuget
-
-      - if: ${{ steps.nuget.outputs.feed-uri }}
+      -
+        if: ${{ steps.nuget.outputs.feed-uri }}
         run: |
           echo "feed-uri - ${{ steps.nuget.outputs.feed-uri }}"
           curl -fSL "${{ steps.nuget.outputs.feed-uri }}"
-
-      - uses: moomiji/host-nuget-on-github@main
+      -
+        uses: moomiji/host-nuget-on-github@main
         with:
           skip-existing: true
           package-paths: ./
           branch: test-squash
           base-uri: https://github.com/moomiji/host-nuget-on-github/raw/test-squash/
           squash: true
-
-      - uses: moomiji/host-nuget-on-github@main
+      -
+        uses: moomiji/host-nuget-on-github@main
         with:
           skip-existing: true
           squash: true
@@ -46,8 +47,8 @@ jobs:
           branch: test-path
           base-uri: https://github.com/moomiji/host-nuget-on-github/raw/test-path/feed/
           feed-path: feed
-
-      - uses: moomiji/host-nuget-on-github@main
+      -
+        uses: moomiji/host-nuget-on-github@main
         with:
           skip-existing: true
           package-paths: ./
@@ -55,8 +56,8 @@ jobs:
           base-uri: https://github.com/moomiji/host-nuget-on-github/raw/test-commit-no-sign/
           squash: true
           commit-sign: true
-
-      - uses: moomiji/host-nuget-on-github@main
+      -
+        uses: moomiji/host-nuget-on-github@main
         with:
           skip-existing: true
           squash: true
