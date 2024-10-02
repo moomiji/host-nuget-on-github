@@ -23,6 +23,12 @@ jobs:
           package-paths: ./
           branch: test-simplest
           base-uri: https://github.com/moomiji/host-nuget-on-github/raw/test-simplest/
+        id: nuget
+
+      - if: ${{ steps.nuget.outputs.feed-uri }}
+        run: |
+          echo "feed-uri - ${{ steps.nuget.outputs.feed-uri }}"
+          curl -fSL "${{ steps.nuget.outputs.feed-uri }}"
 
       - uses: moomiji/host-nuget-on-github@main
         with:

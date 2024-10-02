@@ -79,6 +79,11 @@ inputs:
     description: 'Whether to download Git-LFS files'
     default: false
 
+outputs:
+  feed-uri:
+    description: "Full uri of the feed's root."
+    value: ${{ steps.verify.outputs.feed-uri }}
+
 runs:
   using: "composite"
   steps:
@@ -93,6 +98,8 @@ runs:
 
     - id: verify
       shell: bash
+      env:
+        SLEET_FEED_BASEURI: ${{ inputs.base-uri }}
       run: |
         mv ${{ inputs.repository-path }} ../
         cd ../${{ inputs.repository-path }}
@@ -115,6 +122,8 @@ runs:
 
         cd ${{ github.workspace }}/../${{ inputs.repository-path }}
         echo "feed-workspace=$(pwd)" | tee -a $GITHUB_OUTPUT
+
+        echo "feed-uri=${SLEET_FEED_BASEURI%/}/index.json" | tee -a $GITHUB_OUTPUT
 
     - shell: bash
       env:
