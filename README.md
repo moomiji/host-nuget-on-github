@@ -17,7 +17,7 @@ Open the feed via GitHub-Pages or https://github.com/{repository}/raw/{branch}/{
     # Useful if serving up the content from a different endpoint.
     base-uri: # required
 
-    # Relative path to individual packages or directories containing packages.
+    # Relative paths to individual packages or directories containing packages.
     package-paths: # required
 
     # Bash commands executed on sleet pushed.
@@ -77,6 +77,8 @@ Open the feed via GitHub-Pages or https://github.com/{repository}/raw/{branch}/{
     # Whether to download Git-LFS files.
     lfs: false
 ```
+
+Finds more examples in the [test.yml](/.github/workflows/test.yml).
 
 ### Token permissions
 

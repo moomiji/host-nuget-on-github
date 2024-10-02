@@ -13,7 +13,7 @@ inputs:
       Useful if serving up the content from a different endpoint.
     required: true
   package-paths:
-    description: 'Relative path to individual packages or directories containing packages.'
+    description: 'Relative paths to individual packages or directories containing packages.'
     required: true
   on-sleet-pushed:
     description: 'Bash commands executed on sleet pushed.'
@@ -123,13 +123,14 @@ runs:
     -
       shell: bash
       env:
+        PACKAGE_PATHS: ${{ inputs.package-paths }}
         SLEET_FEED_TYPE: local
         SLEET_FEED_BASEURI: ${{ inputs.base-uri }}
         SLEET_FEED_PATH: ${{ steps.verify.outputs.feed-workspace }}/${{ inputs.feed-path }}
         FEED_WORKSPACE: ${{ steps.verify.outputs.feed-workspace }}
       run: |
         dotnet tool install -g sleet
-        sleet push ${{ inputs.package-paths }} \
+        sleet push ${PACKAGE_PATHS} \
           ${{ inputs.force && '--force' || '' }} \
           ${{ inputs.skip-existing && '--skip-existing' || '' }} \
           --config ${{ inputs.config }}

@@ -15,8 +15,25 @@ jobs:
           echo ${MSTEST_VERSION}
           PackageBaseAddress=$(curl -fS https://pkgs.dev.azure.com/dnceng/public/_packaging/test-tools/nuget/v3/index.json | jq -r 'first(.resources[] | select(.["@type"] | startswith("PackageBaseAddress"))) | .["@id"]')
           Version=$(curl -fS ${PackageBaseAddress}/mstest/index.json | jq -r "first(.versions[] | select(startswith(\"${MSTEST_VERSION}\")))")
-          curl -fSLO "${PackageBaseAddress}/mstest/${Version}/mstest.${Version}.nupkg"
-          curl -fSLO "${PackageBaseAddress}/mstest/3.6.0/mstest.3.6.0.nupkg"
+          curl -fSLO "${PackageBaseAddress}/mstest/${Version}/mstest.${Version}.nupkg" -w "\nDownloaded from: %{url_effective}\n"
+          curl -fSLO "${PackageBaseAddress}/mstest/3.6.0/mstest.3.6.0.nupkg" -w "\nDownloaded from: %{url_effective}\n"
+          curl -fSLO "${PackageBaseAddress}/mstest/3.5.2/mstest.3.5.2.nupkg" -w "\nDownloaded from: %{url_effective}\n"
+      -
+        uses: moomiji/host-nuget-on-github@main
+        with:
+          skip-existing: true
+          package-paths: |
+            mstest.3.6.0.nupkg
+            mstest.3.5.2.nupkg
+          branch: test-package-paths
+          base-uri: https://github.com/moomiji/host-nuget-on-github/raw/test-package-paths/
+        id: nuget
+      -
+        if: ${{ steps.nuget.outputs.feed-uri }}
+        run: |
+          echo "feed-uri - ${{ steps.nuget.outputs.feed-uri }}"
+          curl -fSL "${{ steps.nuget.outputs.feed-uri }}"
+          rm mstest.3.6.0.nupkg mstest.3.5.2.nupkg
       -
         uses: moomiji/host-nuget-on-github@main
         with:
@@ -24,12 +41,6 @@ jobs:
           package-paths: ./
           branch: test-simplest
           base-uri: https://github.com/moomiji/host-nuget-on-github/raw/test-simplest/
-        id: nuget
-      -
-        if: ${{ steps.nuget.outputs.feed-uri }}
-        run: |
-          echo "feed-uri - ${{ steps.nuget.outputs.feed-uri }}"
-          curl -fSL "${{ steps.nuget.outputs.feed-uri }}"
       -
         uses: moomiji/host-nuget-on-github@main
         with:
