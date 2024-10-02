@@ -116,7 +116,7 @@ runs:
           git rm -rf .
         fi
 
-        cd ${{ github.workspace }}/../${{ inputs.repository-path }}
+        cd ${GITHUB_WORKSPACE}/../${{ inputs.repository-path }}
         echo "feed-workspace=$(pwd)" | tee -a $GITHUB_OUTPUT
 
         echo "feed-uri=${SLEET_FEED_BASEURI%/}/index.json" | tee -a $GITHUB_OUTPUT
