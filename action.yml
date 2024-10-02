@@ -153,9 +153,9 @@ runs:
         git_user_signingkey: true
         git_commit_gpgsign: true
     -
-      working-directory: ${{ steps.verify.outputs.feed-workspace }}
       shell: bash
       run: |
+        cd ${{ steps.verify.outputs.feed-workspace }}
         git config --local user.name "${{ inputs.commit-user-name }}"
         git config --local user.email "${{ inputs.commit-user-email }}"
         git add .
