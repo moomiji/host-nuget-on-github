@@ -99,15 +99,15 @@ runs:
       run: |
         TARGET_PATH="../${{ inputs.repository-path }}"
         if [ -d "$TARGET_PATH" ]; then
-          echo "Warning: Target path already exists at $TARGET_PATH, removing it"
+          echo -e "\033[33m Warning: Target path already exists at $TARGET_PATH, removing it \033[0m"
           rm -rf "$TARGET_PATH"
         fi
         mv "${{ inputs.repository-path }}" ../
         cd "$TARGET_PATH" || exit 1
         
-        echo "Checking branch state for ${{ inputs.branch }}"
+        echo -e "\033[32m Checking branch state for ${{ inputs.branch }} \033[0m"
         if git rev-parse --verify origin/${{ inputs.branch }} >/dev/null 2>&1; then
-          echo "Branch exists on remote: ${{ inputs.branch }}"
+          echo -e "\033[32m Branch exists on remote: ${{ inputs.branch }} \033[0m"
           if ${{ inputs.squash }}; then
             echo "exist-branch=squash" | tee -a $GITHUB_OUTPUT
             # Validate local and remote are in sync before squash
@@ -122,7 +122,7 @@ runs:
           fi
         else
           echo "exist-branch=false" | tee -a $GITHUB_OUTPUT
-          echo "Creating orphan branch: ${{ inputs.branch }}"
+          echo -e "\033[32m Creating orphan branch: ${{ inputs.branch }} \033[0m"
           git checkout --orphan ${{ inputs.branch }}
           git rm -rf .
         fi
@@ -130,11 +130,11 @@ runs:
         cd "${GITHUB_WORKSPACE}/../${{ inputs.repository-path }}" || exit 1
         FEED_WORKSPACE_PATH="$(pwd)"
         echo "feed-workspace=$FEED_WORKSPACE_PATH" | tee -a $GITHUB_OUTPUT
-        echo "Feed workspace initialized: $FEED_WORKSPACE_PATH"
+        echo -e "\033[32m Feed workspace initialized: $FEED_WORKSPACE_PATH \033[0m"
 
         FEED_URI="${SLEET_FEED_BASEURI%/}/index.json"
         echo "feed-uri=$FEED_URI" | tee -a $GITHUB_OUTPUT
-        echo "Feed URI: $FEED_URI"
+        echo -e "\033[32m Feed URI: $FEED_URI \033[0m"
     -
       shell: bash
       env:
@@ -144,26 +144,28 @@ runs:
         SLEET_FEED_PATH: ${{ steps.verify.outputs.feed-workspace }}/${{ inputs.feed-path }}
         FEED_WORKSPACE: ${{ steps.verify.outputs.feed-workspace }}
       run: |
-        set -e  # Exit on any error
-        
-        echo "Installing sleet tool..."
+        echo -e "\033[32m Installing sleet tool... \033[0m"
         dotnet tool install -g sleet
-        echo "Sleet installation completed"
+        echo -e "\033[32m Sleet installation completed \033[0m"
         
-        echo "Pushing packages to NuGet feed..."
-        echo "Package paths: ${PACKAGE_PATHS}"
-        echo "Feed path: ${SLEET_FEED_PATH}"
-        echo "Feed base URI: ${SLEET_FEED_BASEURI}"
+        echo -e "\033[32m Pushing packages to NuGet feed... \033[0m"
+        echo -e "\033[32m Package paths: ${PACKAGE_PATHS} \033[0m"
+        echo -e "\033[32m Feed path: ${SLEET_FEED_PATH} \033[0m"
+        echo -e "\033[32m Feed base URI: ${SLEET_FEED_BASEURI} \033[0m"
         
         # Explicit error handling for sleet push
-        if ! sleet push ${PACKAGE_PATHS} \
+        SLEET_EXIT_CODE=0
+        sleet push ${PACKAGE_PATHS} \
           ${{ inputs.force && '--force' || '' }} \
           ${{ inputs.skip-existing && '--skip-existing' || '' }} \
-          --config ${{ inputs.config }}; then
-          echo "ERROR: sleet push command failed with exit code $?"
-          exit 1
+          --config ${{ inputs.config }} || SLEET_EXIT_CODE=$?
+        
+        if [ "$SLEET_EXIT_CODE" -ne 0 ]; then
+          echo -e "\033[31m ERROR: sleet push command failed with exit code $SLEET_EXIT_CODE \033[0m"
+          exit $SLEET_EXIT_CODE
         fi
-        echo "Packages pushed successfully to feed"
+
+        echo -e "\033[32m Packages pushed successfully to feed \033[0m"
     -
       shell: bash
       env:
@@ -172,12 +174,12 @@ runs:
         SLEET_FEED_PATH: ${{ steps.verify.outputs.feed-workspace }}/${{ inputs.feed-path }}
         FEED_WORKSPACE: ${{ steps.verify.outputs.feed-workspace }}
       run: |
-        echo "Executing on-sleet-pushed hooks..."
+        echo -e "\033[32m Executing on-sleet-pushed hooks... \033[0m"
         if [ -n "${{ inputs.on-sleet-pushed }}" ]; then
           ${{ inputs.on-sleet-pushed }}
-          echo "on-sleet-pushed hooks completed"
+          echo -e "\033[32m on-sleet-pushed hooks completed \033[0m"
         else
-          echo "No on-sleet-pushed hooks specified"
+          echo -e "\033[32m No on-sleet-pushed hooks specified \033[0m"
         fi
     -
       if: inputs.commit-sign == 'true' && inputs.commit-user-gpg-key != ''
@@ -192,36 +194,35 @@ runs:
     -
       shell: bash
       run: |
-        set -e
         cd "${{ steps.verify.outputs.feed-workspace }}" || exit 1
-        echo "Configuring git user..."
+        echo -e "\033[32m Configuring git user... \033[0m"
         git config --local user.name "${{ inputs.commit-user-name }}"
         git config --local user.email "${{ inputs.commit-user-email }}"
         
-        echo "Staging changes for commit..."
+        echo -e "\033[32m Staging changes for commit... \033[0m"
         git add .
         CHANGES=$(git status --short | wc -l)
-        echo "Number of changed files: $CHANGES"
+        echo -e "\033[32m Number of changed files: $CHANGES \033[0m"
         
         if [ "$CHANGES" -gt 0 ]; then
-          echo "Creating commit..."
+          echo -e "\033[32m Creating commit... \033[0m"
           git commit \
             -m "${{ inputs.commit-message }}" \
             -m "- sha: ${{ github.sha }}" \
             -m "- run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
             --author="${{ inputs.commit-author }}" \
             ${{ steps.gpg.outputs.keyid != '' && '-S' || '' }}
-          echo "Commit created successfully"
+          echo -e "\033[32m Commit created successfully \033[0m"
         else
-          echo "No changes to commit"
+          echo -e "\033[32m No changes to commit \033[0m"
         fi
         
         if ${{ steps.verify.outputs.exist-branch == 'squash' }}; then
-          echo "Setting upstream branch for squash mode..."
+          echo -e "\033[32m Setting upstream branch for squash mode... \033[0m"
           git branch --set-upstream-to=origin/${{ inputs.branch }}
         fi
         if ${{ steps.verify.outputs.exist-branch == 'true' }}; then
-          echo "Pulling and rebasing from remote branch..."
+          echo -e "\033[32m Pulling and rebasing from remote branch... \033[0m"
           git pull origin ${{ inputs.branch }} --rebase
         fi
     -
@@ -237,35 +238,35 @@ runs:
       shell: bash
       run: |
         # Verify output integrity and feed accessibility
-        echo "Validating action outputs..."
+        echo -e "\033[32m Validating action outputs... \033[0m"
         
         # Verify feed-uri output is set
         FEED_URI="${{ steps.verify.outputs.feed-uri }}"
         if [ -z "$FEED_URI" ]; then
-          echo "ERROR: feed-uri output is empty"
+          echo -e "\033[31m ERROR: feed-uri output is empty \033[0m"
           exit 1
         fi
         
         # Validate feed-uri format (should be a valid URI)
         if ! [[ "$FEED_URI" =~ ^https?:// ]]; then
-          echo "WARNING: feed-uri does not start with http:// or https://"
-          echo "Feed URI: $FEED_URI"
+          echo -e "\033[33m WARNING: feed-uri does not start with http:// or https:// \033[0m"
+          echo -e "\033[34m Feed URI: $FEED_URI \033[0m"
         else
-          echo "✓ Feed URI format validated: $FEED_URI"
+          echo -e "\033[32m ✓ Feed URI format validated: $FEED_URI \033[0m"
         fi
         
         # Verify feed-workspace path exists and was created successfully
         FEED_WORKSPACE="${{ steps.verify.outputs.feed-workspace }}"
         if [ ! -d "$FEED_WORKSPACE" ]; then
-          echo "WARNING: feed-workspace directory was cleaned up (expected if using orphan branch)"
+          echo -e "\033[33m WARNING: feed-workspace directory was cleaned up (expected if using orphan branch) \033[0m"
         else
-          echo "✓ Feed workspace exists: $FEED_WORKSPACE"
+          echo -e "\033[32m ✓ Feed workspace exists: $FEED_WORKSPACE \033[0m"
           # Count the number of files in the feed
           FILE_COUNT=$(find "$FEED_WORKSPACE" -type f | wc -l)
-          echo "  Files in feed: $FILE_COUNT"
+          echo -e "\033[32m   Files in feed: $FILE_COUNT \033[0m"
         fi
         
-        echo "Output validation completed successfully"
+        echo -e "\033[32m Output validation completed successfully \033[0m"
     -
       if: always()
       shell: bash
