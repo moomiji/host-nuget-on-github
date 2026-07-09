@@ -82,9 +82,9 @@ runs:
   using: "composite"
   steps:
     -
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
     -
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
         fetch-depth: 0
         repository: ${{ inputs.repository }}
@@ -145,7 +145,7 @@ runs:
     -
       if: inputs.commit-sign == 'true' && inputs.commit-user-gpg-key != ''
       id: gpg
-      uses: crazy-max/ghaction-import-gpg@v6
+      uses: crazy-max/ghaction-import-gpg@v7
       with:
         workdir: ${{ steps.verify.outputs.feed-workspace }}
         gpg_private_key: ${{ inputs.commit-user-gpg-key }}
@@ -172,7 +172,7 @@ runs:
           git pull origin ${{ inputs.branch }} --rebase
         fi
     -
-      uses: ad-m/github-push-action@master
+      uses: ad-m/github-push-action@v1
       with:
         repository: ${{ inputs.repository }}
         branch: ${{ inputs.branch }}
