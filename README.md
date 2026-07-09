@@ -82,22 +82,37 @@ Finds more examples in the [test.yml](/.github/workflows/test.yml).
 
 ### Token permissions
 
-To ensure your GitHub Actions workflows function correctly, it's important to configure the `token` with necessary permissions `contents: write`.
+To ensure your GitHub Actions workflows function correctly, it's important to configure the `token` with necessary permissions. The required permissions vary depending on your setup:
 
-- If the nuget feed repository ___is___ the repository using this Action
+**Required permissions:**
+- `contents: write` - **REQUIRED** for all scenarios (pushing commits and creating orphan branches)
+- `actions: read` - Recommended for workflow visibility
 
-Please read [ this article](https://github.com/ad-m/github-push-action#requirements-and-prerequisites), or add the following code directly to the job:
+**Optional permissions (based on your setup):**
+- If using GPG signing (`commit-sign: true`): Ensure the token has sufficient access to verify signatures
+
+#### Scenario 1: Feed repository is the same as the repository using this Action
+
+Add the following permissions to your workflow job:
 
 ```yml
 jobs:
   job:
     permissions:
       contents: write
+      actions: read
 ```
 
-- If the nuget feed repository ___is not___ the repository using this Action
+For more details, see [GitHub's documentation](https://github.com/ad-m/github-push-action#requirements-and-prerequisites).
 
-Please visit [the link](https://github.com/settings/personal-access-tokens/new), create the PAT token with `Read and write` access to the nuget feed repository, add the token to the repository's [secrets](https://github.com/owner/repo/settings/secrets/actions), and use secret like the following code:
+#### Scenario 2: Feed repository is different from the repository using this Action
+
+1. Visit [Personal Access Tokens](https://github.com/settings/personal-access-tokens/new)
+2. Create a new token with:
+   - Repository access: Select the target NuGet feed repository
+   - Permissions: Grant `Read and write` access to `Contents`
+3. Add the token to your workflow repository's [secrets](https://github.com/owner/repo/settings/secrets/actions)
+4. Use the token in your workflow:
 
 ```yml
 - uses: moomiji/host-nuget-on-github@v1 # Do not use @main
@@ -105,6 +120,8 @@ Please visit [the link](https://github.com/settings/personal-access-tokens/new),
     # ...
     token: ${{ secrets.<secret_name> }}
 ```
+
+**Note:** For cross-repository scenarios, ensure the token has `contents: write` permission on the target NuGet feed repository.
 
 ### Action outputs
 

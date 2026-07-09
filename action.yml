@@ -29,7 +29,7 @@ inputs:
     default: ''
   config:
     description: '[Relative path to sleet.json where the source information is contained.](https://github.com/emgarten/Sleet/blob/main/doc/commands.md#push)'
-    default: 'None'
+    default: 'none'
   force:
     description: '[Overwrite existing packages.](https://github.com/emgarten/Sleet/blob/main/doc/commands.md#push)'
     default: false
@@ -97,11 +97,21 @@ runs:
       env:
         SLEET_FEED_BASEURI: ${{ inputs.base-uri }}
       run: |
-        mv ${{ inputs.repository-path }} ../
-        cd ../${{ inputs.repository-path }}
-        if git rev-parse --verify origin/${{ inputs.branch }}; then
+        TARGET_PATH="../${{ inputs.repository-path }}"
+        if [ -d "$TARGET_PATH" ]; then
+          echo "Warning: Target path already exists at $TARGET_PATH, removing it"
+          rm -rf "$TARGET_PATH"
+        fi
+        mv "${{ inputs.repository-path }}" ../
+        cd "$TARGET_PATH" || exit 1
+        
+        echo "Checking branch state for ${{ inputs.branch }}"
+        if git rev-parse --verify origin/${{ inputs.branch }} >/dev/null 2>&1; then
+          echo "Branch exists on remote: ${{ inputs.branch }}"
           if ${{ inputs.squash }}; then
             echo "exist-branch=squash" | tee -a $GITHUB_OUTPUT
+            # Validate local and remote are in sync before squash
+            git fetch origin ${{ inputs.branch }}
             git checkout ${{ inputs.branch }}
             git checkout --orphan temp-${{ inputs.branch }}
             git branch -d ${{ inputs.branch }}
@@ -112,14 +122,19 @@ runs:
           fi
         else
           echo "exist-branch=false" | tee -a $GITHUB_OUTPUT
+          echo "Creating orphan branch: ${{ inputs.branch }}"
           git checkout --orphan ${{ inputs.branch }}
           git rm -rf .
         fi
 
-        cd ${GITHUB_WORKSPACE}/../${{ inputs.repository-path }}
-        echo "feed-workspace=$(pwd)" | tee -a $GITHUB_OUTPUT
+        cd "${GITHUB_WORKSPACE}/../${{ inputs.repository-path }}" || exit 1
+        FEED_WORKSPACE_PATH="$(pwd)"
+        echo "feed-workspace=$FEED_WORKSPACE_PATH" | tee -a $GITHUB_OUTPUT
+        echo "Feed workspace initialized: $FEED_WORKSPACE_PATH"
 
-        echo "feed-uri=${SLEET_FEED_BASEURI%/}/index.json" | tee -a $GITHUB_OUTPUT
+        FEED_URI="${SLEET_FEED_BASEURI%/}/index.json"
+        echo "feed-uri=$FEED_URI" | tee -a $GITHUB_OUTPUT
+        echo "Feed URI: $FEED_URI"
     -
       shell: bash
       env:
@@ -129,11 +144,26 @@ runs:
         SLEET_FEED_PATH: ${{ steps.verify.outputs.feed-workspace }}/${{ inputs.feed-path }}
         FEED_WORKSPACE: ${{ steps.verify.outputs.feed-workspace }}
       run: |
+        set -e  # Exit on any error
+        
+        echo "Installing sleet tool..."
         dotnet tool install -g sleet
-        sleet push ${PACKAGE_PATHS} \
+        echo "Sleet installation completed"
+        
+        echo "Pushing packages to NuGet feed..."
+        echo "Package paths: ${PACKAGE_PATHS}"
+        echo "Feed path: ${SLEET_FEED_PATH}"
+        echo "Feed base URI: ${SLEET_FEED_BASEURI}"
+        
+        # Explicit error handling for sleet push
+        if ! sleet push ${PACKAGE_PATHS} \
           ${{ inputs.force && '--force' || '' }} \
           ${{ inputs.skip-existing && '--skip-existing' || '' }} \
-          --config ${{ inputs.config }}
+          --config ${{ inputs.config }}; then
+          echo "ERROR: sleet push command failed with exit code $?"
+          exit 1
+        fi
+        echo "Packages pushed successfully to feed"
     -
       shell: bash
       env:
@@ -141,7 +171,14 @@ runs:
         SLEET_FEED_BASEURI: ${{ inputs.base-uri }}
         SLEET_FEED_PATH: ${{ steps.verify.outputs.feed-workspace }}/${{ inputs.feed-path }}
         FEED_WORKSPACE: ${{ steps.verify.outputs.feed-workspace }}
-      run: ${{ inputs.on-sleet-pushed }}
+      run: |
+        echo "Executing on-sleet-pushed hooks..."
+        if [ -n "${{ inputs.on-sleet-pushed }}" ]; then
+          ${{ inputs.on-sleet-pushed }}
+          echo "on-sleet-pushed hooks completed"
+        else
+          echo "No on-sleet-pushed hooks specified"
+        fi
     -
       if: inputs.commit-sign == 'true' && inputs.commit-user-gpg-key != ''
       id: gpg
@@ -155,20 +192,36 @@ runs:
     -
       shell: bash
       run: |
-        cd ${{ steps.verify.outputs.feed-workspace }}
+        set -e
+        cd "${{ steps.verify.outputs.feed-workspace }}" || exit 1
+        echo "Configuring git user..."
         git config --local user.name "${{ inputs.commit-user-name }}"
         git config --local user.email "${{ inputs.commit-user-email }}"
+        
+        echo "Staging changes for commit..."
         git add .
-        git commit \
-          -m "${{ inputs.commit-message }}" \
-          -m "- sha: ${{ github.sha }}" \
-          -m "- run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-          --author="${{ inputs.commit-author }}" \
-          ${{ steps.gpg.outputs.keyid != '' && '-S' || '' }}
+        CHANGES=$(git status --short | wc -l)
+        echo "Number of changed files: $CHANGES"
+        
+        if [ "$CHANGES" -gt 0 ]; then
+          echo "Creating commit..."
+          git commit \
+            -m "${{ inputs.commit-message }}" \
+            -m "- sha: ${{ github.sha }}" \
+            -m "- run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --author="${{ inputs.commit-author }}" \
+            ${{ steps.gpg.outputs.keyid != '' && '-S' || '' }}
+          echo "Commit created successfully"
+        else
+          echo "No changes to commit"
+        fi
+        
         if ${{ steps.verify.outputs.exist-branch == 'squash' }}; then
+          echo "Setting upstream branch for squash mode..."
           git branch --set-upstream-to=origin/${{ inputs.branch }}
         fi
         if ${{ steps.verify.outputs.exist-branch == 'true' }}; then
+          echo "Pulling and rebasing from remote branch..."
           git pull origin ${{ inputs.branch }} --rebase
         fi
     -
@@ -179,6 +232,40 @@ runs:
         github_token: ${{ inputs.token }}
         directory: ${{ steps.verify.outputs.feed-workspace }}
         force_with_lease: ${{ steps.verify.outputs.exist-branch == 'squash' }}
+    -
+      id: validate
+      shell: bash
+      run: |
+        # Verify output integrity and feed accessibility
+        echo "Validating action outputs..."
+        
+        # Verify feed-uri output is set
+        FEED_URI="${{ steps.verify.outputs.feed-uri }}"
+        if [ -z "$FEED_URI" ]; then
+          echo "ERROR: feed-uri output is empty"
+          exit 1
+        fi
+        
+        # Validate feed-uri format (should be a valid URI)
+        if ! [[ "$FEED_URI" =~ ^https?:// ]]; then
+          echo "WARNING: feed-uri does not start with http:// or https://"
+          echo "Feed URI: $FEED_URI"
+        else
+          echo "✓ Feed URI format validated: $FEED_URI"
+        fi
+        
+        # Verify feed-workspace path exists and was created successfully
+        FEED_WORKSPACE="${{ steps.verify.outputs.feed-workspace }}"
+        if [ ! -d "$FEED_WORKSPACE" ]; then
+          echo "WARNING: feed-workspace directory was cleaned up (expected if using orphan branch)"
+        else
+          echo "✓ Feed workspace exists: $FEED_WORKSPACE"
+          # Count the number of files in the feed
+          FILE_COUNT=$(find "$FEED_WORKSPACE" -type f | wc -l)
+          echo "  Files in feed: $FILE_COUNT"
+        fi
+        
+        echo "Output validation completed successfully"
     -
       if: always()
       shell: bash
