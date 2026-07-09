@@ -232,7 +232,7 @@ runs:
         branch: ${{ inputs.branch }}
         github_token: ${{ inputs.token }}
         directory: ${{ steps.verify.outputs.feed-workspace }}
-        force_with_lease: ${{ steps.verify.outputs.exist-branch == 'squash' }}
+        force: ${{ steps.verify.outputs.exist-branch == 'squash' }}
     -
       id: validate
       shell: bash
